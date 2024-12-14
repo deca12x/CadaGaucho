@@ -6,33 +6,63 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  EXTRIMIAN_CONFIG,
+  isExtrimianConfigValid,
+} from "@/lib/extrimian/config";
+
+// Define the verification flow states
+type VerificationStep =
+  | "initial" // Initial state
+  | "requestingVC" // Requesting Verifiable Credential
+  | "displayingQR" // QR code is displayed
+  | "awaitingScan" // Waiting for user to scan QR
+  | "verifying" // Verifying with Extrimian
+  | "verified" // Verification complete
+  | "failed"; // Verification failed
+
+interface VerificationState {
+  step: VerificationStep;
+  error?: string;
+  sessionId?: string;
+  oobContentData?: string; // Out of band content for QR code
+}
 
 export default function QuarkIDTest() {
   const { ready, authenticated, user } = usePrivy();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // States for QuarkID operations
-  const [didDocument, setDidDocument] = useState<any>(null);
-  const [identityStatus, setIdentityStatus] = useState<
-    "none" | "creating" | "created"
-  >("none");
+  // Main verification state
+  const [verificationState, setVerificationState] = useState<VerificationState>(
+    {
+      step: "initial",
+    }
+  );
 
+  const [configValid, setConfigValid] = useState(false);
+
+  // Effect to check if user is already verified
   useEffect(() => {
-    // Check if user has a DID when component mounts
-    const checkExistingDID = async () => {
-      if (user?.wallet?.address) {
-        try {
-          // TODO: Implement API call to check if user has existing DID
-          // setIdentityStatus based on response
-        } catch (error) {
-          console.error("Error checking DID:", error);
-        }
+    const checkVerificationStatus = async () => {
+      if (!user?.wallet?.address) return;
+
+      try {
+        // TODO: Check if user's DID is already verified
+        // This will be implemented when we add Extrimian API integration
+      } catch (error) {
+        console.error("Error checking verification status:", error);
       }
     };
 
-    checkExistingDID();
+    checkVerificationStatus();
   }, [user]);
+
+  // Effect to check configuration
+  useEffect(() => {
+    // Check configuration
+    setConfigValid(isExtrimianConfigValid());
+  }, []);
 
   // Loading state
   if (!ready) {
@@ -54,99 +84,51 @@ export default function QuarkIDTest() {
     return null;
   }
 
-  const handleCreateIdentity = async () => {
-    setLoading(true);
-    try {
-      // TODO: Implement API call to create new DID
-      setIdentityStatus("creating");
-    } catch (error) {
-      console.error("Error creating identity:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateIdentity = async () => {
-    setLoading(true);
-    try {
-      // TODO: Implement API call to update DID
-    } catch (error) {
-      console.error("Error updating identity:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResolveIdentity = async () => {
-    setLoading(true);
-    try {
-      // TODO: Implement API call to resolve DID
-    } catch (error) {
-      console.error("Error resolving identity:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeactivateIdentity = async () => {
-    setLoading(true);
-    try {
-      // TODO: Implement API call to deactivate DID
-    } catch (error) {
-      console.error("Error deactivating identity:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Handler to start verification process
+  const handleStartVerification = async () => {
+    setVerificationState({ step: "requestingVC" });
+    // TODO: Implement Extrimian API call
   };
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 my-14">
       <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-2xl">
         <h1 className="text-3xl font-bold text-center mb-6">
-          QuarkID Integration Test
+          QuarkID Verification
         </h1>
 
         <div className="space-y-4">
+          {/* Config Status */}
+          <div className="text-center mb-4">
+            <p
+              className={`text-lg ${
+                configValid ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              Configuration: {configValid ? "Valid" : "Invalid"}
+            </p>
+          </div>
+
+          {/* Status display */}
+          <div className="text-center mb-4">
+            <p className="text-lg">Current Status: {verificationState.step}</p>
+            {verificationState.error && (
+              <p className="text-red-500">{verificationState.error}</p>
+            )}
+          </div>
+
+          {/* Action button */}
           <Button
-            onClick={handleCreateIdentity}
+            onClick={handleStartVerification}
             className="w-full"
-            disabled={loading || identityStatus === "created"}
+            disabled={
+              loading || verificationState.step !== "initial" || !configValid
+            }
           >
-            Create Identity
+            Start Verification
           </Button>
 
-          <Button
-            onClick={handleUpdateIdentity}
-            className="w-full"
-            disabled={loading || identityStatus !== "created"}
-          >
-            Update Identity
-          </Button>
-
-          <Button
-            onClick={handleResolveIdentity}
-            className="w-full"
-            disabled={loading}
-          >
-            Resolve Identity
-          </Button>
-
-          <Button
-            onClick={handleDeactivateIdentity}
-            className="w-full"
-            disabled={loading || identityStatus !== "created"}
-          >
-            Deactivate Identity
-          </Button>
-
-          {didDocument && (
-            <div className="mt-4 p-4 bg-gray-100 rounded">
-              <h2 className="text-xl font-semibold mb-2">DID Document:</h2>
-              <pre className="whitespace-pre-wrap">
-                {JSON.stringify(didDocument, null, 2)}
-              </pre>
-            </div>
-          )}
+          {/* TODO: Add QR code display area */}
         </div>
       </div>
     </div>
