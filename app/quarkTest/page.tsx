@@ -10,6 +10,7 @@ import {
   EXTRIMIAN_CONFIG,
   isExtrimianConfigValid,
 } from "@/lib/extrimian/config";
+import { ExtrimianAPI } from "@/lib/extrimian/api";
 
 // Define the verification flow states
 type VerificationStep =
@@ -24,8 +25,9 @@ type VerificationStep =
 interface VerificationState {
   step: VerificationStep;
   error?: string;
-  sessionId?: string;
-  oobContentData?: string; // Out of band content for QR code
+  invitationId?: string;
+  oobContentData?: string;
+  verifierDID?: string;
 }
 
 export default function QuarkIDTest() {
@@ -86,8 +88,35 @@ export default function QuarkIDTest() {
 
   // Handler to start verification process
   const handleStartVerification = async () => {
+    setLoading(true);
     setVerificationState({ step: "requestingVC" });
-    // TODO: Implement Extrimian API call
+
+    try {
+      // First verify the DID exists
+      const didResponse = await ExtrimianAPI.resolveDID(
+        EXTRIMIAN_CONFIG.developerDid!
+      );
+      console.log("DID Resolution Response:", didResponse);
+
+      // Then request presentation using the verified DID
+      const response = await ExtrimianAPI.requestPresentation(didResponse.id);
+      console.log("Presentation Request Response:", response);
+
+      setVerificationState({
+        step: "displayingQR",
+        invitationId: response.invitationId,
+        oobContentData: response.oobContentData,
+        verifierDID: didResponse.id,
+      });
+    } catch (error) {
+      console.error("Error requesting presentation:", error);
+      setVerificationState({
+        step: "failed",
+        error: "Failed to request credential verification",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -126,6 +155,21 @@ export default function QuarkIDTest() {
             }
           >
             Start Verification
+          </Button>
+
+          {/* Add a test button */}
+          <Button
+            onClick={async () => {
+              try {
+                const response = await ExtrimianAPI.testDIDCreation();
+                console.log("Test Response:", response);
+              } catch (error) {
+                console.error("Test Failed:", error);
+              }
+            }}
+            className="w-full mt-4"
+          >
+            Test DID Creation
           </Button>
 
           {/* TODO: Add QR code display area */}

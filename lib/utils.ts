@@ -4,6 +4,7 @@ import { createPublicClient, http } from "viem";
 import { sepolia } from "viem/chains";
 import { AttestationABI, attestationContract } from "./abi/AttestationABI";
 import { ethers } from "ethers";
+import { supabase } from "@/lib/supabase";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -44,3 +45,37 @@ export const hasUserIdentity = async (address: string): Promise<boolean> => {
     return false;
   }
 };
+
+export async function checkWalletVerification(
+  walletAddress: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_verifications")
+    .select("is_verified")
+    .eq("wallet_address", walletAddress)
+    .single();
+
+  if (error) {
+    console.error("Error checking verification:", error);
+    return false;
+  }
+
+  return data?.is_verified || false;
+}
+
+export async function markWalletAsVerified(
+  walletAddress: string,
+  did?: string
+) {
+  const { error } = await supabase.from("user_verifications").upsert({
+    wallet_address: walletAddress,
+    is_verified: true,
+    did: did,
+    verified_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    console.error("Error marking wallet as verified:", error);
+    throw error;
+  }
+}
