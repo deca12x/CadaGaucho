@@ -16,6 +16,24 @@ interface PresentationRequest {
         };
       }>;
     };
+    name: string;
+    purpose: string;
+    format: {
+      jwt?: { alg: string[] };
+      jwt_vc?: { alg: string[] };
+      jwt_vp?: { alg: string[] };
+      ldp_vc?: { proof_type: string[] };
+      ldp_vp?: { proof_type: string[] };
+      ldp?: { proof_type: string[] };
+    };
+  };
+  frame: {
+    "@context": string[];
+    type: string[];
+    credentialSubject: {
+      "@explicit": boolean;
+      type: string[];
+    };
   };
 }
 
@@ -39,7 +57,31 @@ interface DIDResolutionResponse {
     };
   }>;
   keyAgreement: string[];
-  assertionMethod: string[];
+  authentication: string[];
+  service: Array<any>;
+}
+
+interface CreateDIDRequest {
+  websocket: string;
+  dwn: string;
+  webhookURL: string;
+  verificationRulesEndpoint: string;
+  integrationServiceEndpoint: string;
+  didMethod: string;
+}
+
+interface CreateDIDResponse {
+  did: string;
+}
+
+interface VerificationRequest {
+  did: string; // Your developer DID
+  type: string; // Type of verification we want
+}
+
+interface VerificationResponse {
+  qrData: string; // Data to show in QR code
+  sessionId: string; // To check verification status
 }
 
 export class ExtrimianAPI {
@@ -84,10 +126,12 @@ export class ExtrimianAPI {
     verifierDID: string
   ): Promise<PresentationResponse> {
     const params: PresentationRequest = {
-      did: verifierDID, // Use the DID created by this API instance
+      did: verifierDID,
       to: "",
       inputDescriptors: {
         id: "residency_check",
+        name: "Buenos Aires Residency Check",
+        purpose: "Verify Buenos Aires residency",
         constraints: {
           fields: [
             {
@@ -101,12 +145,23 @@ export class ExtrimianAPI {
             },
           ],
         },
+        format: {
+          jwt_vc: { alg: ["ES256K"] },
+        },
+      },
+      frame: {
+        "@context": ["https://www.w3.org/2018/credentials/v1"],
+        type: ["VerifiablePresentation"],
+        credentialSubject: {
+          "@explicit": true,
+          type: ["BuenosAiresCredential"],
+        },
       },
     };
 
     return await this.makeRequest(
       "/v1/credentialsbbs/waci/oob/presentation",
-      "PUT", // Changed to PUT
+      "PUT",
       params
     );
   }
@@ -126,5 +181,38 @@ export class ExtrimianAPI {
       console.error("DID Resolution Failed:", error);
       throw error;
     }
+  }
+
+  static async createDID(): Promise<CreateDIDResponse> {
+    const params = {
+      websocket: "https://sandbox-ssi-ws.extrimian.com",
+      dwn: "https://dwn.extrimian.com",
+      webhookURL: "http://localhost:3000/api/extrimian/webhook",
+      verificationRulesEndpoint: "http://localhost:3000/api/extrimian/verify",
+      didMethod: "quarkid",
+    };
+
+    // Add parameters to both query string and body
+    const queryParams = new URLSearchParams({
+      websocket: params.websocket,
+      dwn: params.dwn,
+      verificationRulesEndpoint: params.verificationRulesEndpoint,
+      apikey: EXTRIMIAN_CONFIG.apiKey!,
+    });
+
+    return await this.makeRequest(
+      `/v1/dids/quarkid?${queryParams.toString()}`,
+      "PUT",
+      params
+    );
+  }
+
+  static async requestVerification(): Promise<VerificationResponse> {
+    const params: VerificationRequest = {
+      did: EXTRIMIAN_CONFIG.developerDid!,
+      type: "BuenosAiresCredential",
+    };
+
+    return await this.makeRequest("/v1/verification/request", "POST", params);
   }
 }

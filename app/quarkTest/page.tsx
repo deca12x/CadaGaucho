@@ -92,21 +92,21 @@ export default function QuarkIDTest() {
     setVerificationState({ step: "requestingVC" });
 
     try {
-      // First verify the DID exists
-      const didResponse = await ExtrimianAPI.resolveDID(
-        EXTRIMIAN_CONFIG.developerDid!
-      );
-      console.log("DID Resolution Response:", didResponse);
+      // First create a new DID
+      const createResponse = await ExtrimianAPI.createDID();
+      console.log("DID Creation Response:", createResponse);
 
-      // Then request presentation using the verified DID
-      const response = await ExtrimianAPI.requestPresentation(didResponse.id);
+      // Then use the newly created DID for presentation
+      const response = await ExtrimianAPI.requestPresentation(
+        createResponse.did
+      );
       console.log("Presentation Request Response:", response);
 
       setVerificationState({
         step: "displayingQR",
         invitationId: response.invitationId,
         oobContentData: response.oobContentData,
-        verifierDID: didResponse.id,
+        verifierDID: createResponse.did,
       });
     } catch (error) {
       console.error("Error requesting presentation:", error);
@@ -161,10 +161,10 @@ export default function QuarkIDTest() {
           <Button
             onClick={async () => {
               try {
-                const response = await ExtrimianAPI.testDIDCreation();
-                console.log("Test Response:", response);
+                const response = await ExtrimianAPI.createDID();
+                console.log("DID Creation Response:", response);
               } catch (error) {
-                console.error("Test Failed:", error);
+                console.error("DID Creation Failed:", error);
               }
             }}
             className="w-full mt-4"
