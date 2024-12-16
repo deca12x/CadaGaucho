@@ -186,25 +186,10 @@ export class ExtrimianAPI {
   static async createDID(): Promise<CreateDIDResponse> {
     const params = {
       websocket: "https://sandbox-ssi-ws.extrimian.com",
-      dwn: "https://dwn.extrimian.com",
-      webhookURL: "http://localhost:3000/api/extrimian/webhook",
-      verificationRulesEndpoint: "http://localhost:3000/api/extrimian/verify",
-      didMethod: "quarkid",
+      didMethod: "did:quarkid",
     };
 
-    // Add parameters to both query string and body
-    const queryParams = new URLSearchParams({
-      websocket: params.websocket,
-      dwn: params.dwn,
-      verificationRulesEndpoint: params.verificationRulesEndpoint,
-      apikey: EXTRIMIAN_CONFIG.apiKey!,
-    });
-
-    return await this.makeRequest(
-      `/v1/dids/quarkid?${queryParams.toString()}`,
-      "PUT",
-      params
-    );
+    return await this.makeRequest("/did", "PUT", params);
   }
 
   static async requestVerification(): Promise<VerificationResponse> {

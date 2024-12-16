@@ -11,6 +11,7 @@ import {
   isExtrimianConfigValid,
 } from "@/lib/extrimian/config";
 import { ExtrimianAPI } from "@/lib/extrimian/api";
+import { QRCodeSVG } from "qrcode.react";
 
 // Define the verification flow states
 type VerificationStep =
@@ -92,21 +93,22 @@ export default function QuarkIDTest() {
     setVerificationState({ step: "requestingVC" });
 
     try {
-      // First create a new DID
-      const createResponse = await ExtrimianAPI.createDID();
-      console.log("DID Creation Response:", createResponse);
-
-      // Then use the newly created DID for presentation
+      // Use our stored DID directly
       const response = await ExtrimianAPI.requestPresentation(
-        createResponse.did
+        EXTRIMIAN_CONFIG.developerDid!
       );
-      console.log("Presentation Request Response:", response);
+      console.log(
+        "Full Presentation Response:",
+        JSON.stringify(response, null, 2)
+      );
+      console.log("oobContentData:", response.oobContentData);
+      console.log("invitationId:", response.invitationId);
 
       setVerificationState({
         step: "displayingQR",
         invitationId: response.invitationId,
         oobContentData: response.oobContentData,
-        verifierDID: createResponse.did,
+        verifierDID: EXTRIMIAN_CONFIG.developerDid,
       });
     } catch (error) {
       console.error("Error requesting presentation:", error);
@@ -173,6 +175,22 @@ export default function QuarkIDTest() {
           </Button>
 
           {/* TODO: Add QR code display area */}
+          {verificationState.step === "displayingQR" &&
+            verificationState.oobContentData && (
+              <div className="mt-8 flex flex-col items-center">
+                <h2 className="text-xl font-semibold mb-4">
+                  Scan with QuarkID App
+                </h2>
+                <div className="bg-white p-4 rounded-lg">
+                  <QRCodeSVG
+                    value={verificationState.oobContentData}
+                    size={256}
+                    level="H"
+                    includeMargin
+                  />
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </div>
